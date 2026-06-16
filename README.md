@@ -100,3 +100,13 @@ or you can find it at this
 ## 📝 License
 
 MIT
+
+## 📌 Version
+
+Current stable release: **v0.1.0**
+
+Install with:
+
+```bash
+go get github.com/hakimjazuli/go-async-await/goasyncawait@v0.1.0
+```
