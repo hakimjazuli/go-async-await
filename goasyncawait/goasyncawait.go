@@ -10,7 +10,7 @@ type Result[T any] struct {
 	err error
 }
 
-// Promise wraps a channel and exposes .await()
+// Promise wraps a channel and exposes .Await()
 type Promise[T any] struct {
 	ch     <-chan Result[T]
 	called bool
