@@ -19,7 +19,7 @@ type Promise[T any] struct {
 
 // await blocks until the goroutine sends a value.
 // If called more than once, returns the cached result/error.
-func (p *Promise[T]) await() (T, error) {
+func (p *Promise[T]) Await() (T, error) {
 	if p.called {
 		return p.result.val, p.result.err
 	}
