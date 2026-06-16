@@ -20,5 +20,3 @@ func main() {
 	msg, err := p.Await()
 	fmt.Println("Result:", msg, "Error:", err)
 }
-
-// test
