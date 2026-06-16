@@ -17,6 +17,6 @@ func worker(id int, sleep time.Duration) (string, error) {
 
 func main() {
 	p := goasyncawait.Async(func() (string, error) { return worker(1, 2*time.Second) })
-	msg, err := p.Await()
+	msg, err := p.await()
 	fmt.Println("Result:", msg, "Error:", err)
 }

@@ -1,3 +1,3 @@
-module hakim-jazuli/go-async-await
+module hakimjazuli/go-async-await
 
 go 1.26.4
