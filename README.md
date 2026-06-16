@@ -70,7 +70,7 @@ func main() {
 ```
 
 or you can find it at this
-[example](https://github.com/hakimjazuli/go-async-await/blob/main/example/example.go)
+[example](https://github.com/hakimjazuli/go-async-await/blob/main/example/main.go)
 
 ---
 
