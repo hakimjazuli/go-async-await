@@ -1,7 +1,7 @@
 # go-async-await
 
 A tiny Go library that provides **syntactic sugar** for goroutines and channels, mimicking
-JavaScript’s `async/await` style.  
+JavaScript’s `async/await/then` style.  
  ⚠️ **Note:** This library does not add any performance benefit compared to using goroutines +
 channels directly. It’s purely a wrapper to reduce mental overhead when switching between Go and
 JavaScript async models.
@@ -11,7 +11,7 @@ JavaScript async models.
 ## ✨ Motivation
 
 - Go’s native concurrency (`go f()` + `<-ch`) is simple and powerful, but the syntax differs from
-  JavaScript’s `async/await`.
+  JavaScript’s `async/await/then`.
 - For JS developers working in mixed stacks, constantly switching mental models can be tiring:
   - Fullstack projects (Go backend + JS frontend)
   - Desktop apps using [Wails](https://wails.io/) (Go native binding IPC + JS UI)
@@ -34,37 +34,65 @@ go get github.com/hakimjazuli/go-async-await/goasyncawait
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 
-    . "github.com/hakimjazuli/go-async-await/goasyncawait"
+	. "github.com/hakimjazuli/go-async-await/goasyncawait"
 )
 
 func worker(id int, sleep time.Duration) (string, error) {
-    fmt.Println("before sleep, id:", id, "sleep:", sleep)
-    time.Sleep(sleep)
-    fmt.Println("after sleep, id:", id, "sleep:", sleep)
-    if id == 2 {
-        return "", fmt.Errorf("worker %d failed", id)
-    }
-    return fmt.Sprintf("Worker %d finished after %v", id, sleep), nil
+	fmt.Println("before sleep, id:", id, "sleep:", sleep)
+	time.Sleep(sleep)
+	fmt.Println("after sleep, id:", id, "sleep:", sleep)
+	if id == 2 {
+		return "", fmt.Errorf("worker %d failed", id)
+	}
+	return fmt.Sprintf("Worker %d finished after %v", id, sleep), nil
 }
 
 func main() {
-    // Launch async tasks
-    a1 := Async(func() (string, error) { return worker(1, 3*time.Second) })
-    a2 := Async(func() (string, error) { return worker(2, 1*time.Second) })
-    a3 := Async(func() (string, error) { return worker(3, 2*time.Second) })
+	// 1. Fire off the original worker promises
+	a1 := Async(func() (string, error) { return worker(1, 3*time.Second) })
+	a2 := Async(func() (string, error) { return worker(2, 1*time.Second) })
+	a3 := Async(func() (string, error) { return worker(3, 2*time.Second) })
 
-    // Await results (blocking until each finishes)
-    msg, err := a1.Await()
-    fmt.Println("Result:", msg, "Error:", err)
+	// 2. Chain asynchronous operations using .Then()
+	// These will run automatically in the background as soon as their worker resolves.
+	// Setting these up is completely non-blocking.
+	chainedA1 := a1.Then(func(msg string, err error) (string, error) {
+		if err != nil {
+			return "", fmt.Errorf("chained1 caught error: %w", err)
+		}
+		return msg + " -> [Chained Modification 1]", nil
+	})
 
-    msg, err = a2.Await()
-    fmt.Println("Result:", msg, "Error:", err)
+	chainedA2 := a2.Then(func(msg string, err error) (string, error) {
+		if err != nil {
+			// Worker 2 fails, so this error handling block will execute
+			return "Fallback value for failed Worker 2", nil
+		}
+		return msg + " -> [Chained Modification 2]", nil
+	})
 
-    msg, err = a3.Await()
-    fmt.Println("Result:", msg, "Error:", err)
+	chainedA3 := a3.Then(func(msg string, err error) (string, error) {
+		if err != nil {
+			return "", fmt.Errorf("chained3 caught error: %w", err)
+		}
+		return msg + " -> [Chained Modification 3]", nil
+	})
+
+	fmt.Println("--- Main thread continues setup uninterrupted ---")
+
+	// 3. Await the final chained results.
+	// Only these lines will block execution until the background work completes.
+	msg, err := chainedA1.Await()
+	fmt.Println("Final Chained 1 Result:", msg, "| Error:", err)
+
+	msg, err = chainedA2.Await()
+	fmt.Println("Final Chained 2 Result:", msg, "| Error:", err)
+
+	msg, err = chainedA3.Await()
+	fmt.Println("Final Chained 3 Result:", msg, "| Error:", err)
 }
 
 ```
@@ -76,13 +104,23 @@ or you can find it at this
 
 ## 📖 API
 
-- `Async[T](<func()> 'T, error') \*Promise[T]`
+- `Async[T any](f func() (T, error)) *Promise[T]`
 
-  > - Launches a function in a goroutine and returns a Promise.
+  > - Launches the provided function in a new background goroutine.
+  > - Automatically catches panics and converts them into errors.
+  > - Returns a `*Promise[T]` that can be awaited or chained.
 
-- `(\*Promise[T]) Await() (T, error)`
-  > - Blocks until the goroutine completes. Returns (cached result, cached error) if called multiple
-  >   times.
+- `(*Promise[T]) Await() (T, error)`
+
+  > - Blocks the current goroutine until the asynchronous operation completes.
+  > - Caches the results; subsequent calls return the cached value and error immediately without
+  >   re-blocking.
+
+- `(*Promise[T]) Then(callback func(T, error) (T, error)) *Promise[T]`
+  > - Registers a callback to process the result or handle the error of the current promise.
+  > - **Non-blocking:** Executes asynchronously in a new background goroutine, allowing immediate
+  >   chaining (`.Then().Then()`).
+  > - Returns a new `*Promise[T]` carrying the transformed outcome.
 
 ---
 
@@ -103,10 +141,10 @@ MIT
 
 ## 📌 Version
 
-Current stable release: **v0.1.0**
+Current stable release: **v0.2.0**
 
 Install with:
 
 ```bash
-go get github.com/hakimjazuli/go-async-await/goasyncawait@v0.1.0
+go get github.com/hakimjazuli/go-async-await/goasyncawait@v0.2.0
 ```
